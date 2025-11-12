@@ -1,0 +1,134 @@
+#+title:      cripto-ejercicio-second-preimage
+#+date:       [2025-11-12 mié 16:00]
+#+filetags:   :cripto:diplomatura:famaf:
+#+identifier: 20251112T160028
+
+* Ejercicio
+
+** Enunciado
+El desafío consiste en encontrar una segunda preimagen al resultado de aplicar una función de hash de 24 bits a su dirección de correo electrónico.
+
+Usaremos una función que consiste en aplicar SHA-256 y tomar los primeros N bits del resultado. Llamaremos a esta función SHA-256-N.
+
+Veamos un ejemplo. En todos los casos representaremos las salidas de las funciones de hash como cadenas hexadecimales:
+
+SHA-256("user@example.com") = b4c9a289323b21a01c3e940f150eb...
+
+Entonces
+
+SHA-256-24("user@example.com") = b4c9a2
+SHA-256-48("user@example.com") = b4c9a289323b
+
+Cada byte (8 bits) está representado por 2 caracteres hexadecimales, por lo que SHA-256-24 tiene una salida de 6 caracteres, y SHA-256-48 una de 12.
+
+Para obtener el hash se puede realizar un requerimiento GET a una URL de la forma:
+
+https://ciberseguridad.diplomatura.unc.edu.ar/cripto/second-preimage/<email>/challenge
+
+donde <email> debe ser reemplazado por una dirección de correo electrónico registrada.
+
+De todas formas no es estrictamente necesario, ya que el mismo resultado puede obtenerse aplicando SHA-256 sobre la dirección de correo electrónico y tomando los primeros 24 bits.
+
+Por ejemplo, para obtener SHA-256-24 en un shell:
+#+begin_src bash
+echo -n user@example.com | sha256sum | cut -c-6
+#+end_src
+
+#+RESULTS:
+: b4c9a2
+
+o python
+#+begin_src python :results output
+from hashlib import sha256
+print(sha256(b'user@example.com').hexdigest()[:6])
+#+end_src
+
+#+RESULTS:
+: b4c9a2
+
+
+
+** Respuesta
+
+La respuesta debe ser enviada mediante un requerimiento POST a la URL
+
+https://ciberseguridad.diplomatura.unc.edu.ar/cripto/second-preimage/<email>/answer
+
+El contenido debe ser de tipo FORM, con un campo message con un nuevo mensaje que produzca el mismo hash.
+Ejemplo
+
+El siguiente ejemplo muestra como conectarse con el servidor usando curl
+#+begin_src bash :noeval
+$ curl https://ciberseguridad.diplomatura.unc.edu.ar/cripto/second-preimage/user@example.com/challenge 
+b4c9a2
+$ curl -F message='user@example.comJ<]x' https://ciberseguridad.diplomatura.unc.edu.ar/cripto/second-preimage/user@example.com/answer
+¡Ganaste!
+$ echo -n 'user@example.comJ<]x'| sha256sum |cut -c-6
+b4c9a2
+
+#+end_src
+
+*** Observaciones
+
+- Para encontrar una preimagen, el esfuerzo necesario es del orden de \(2^{n}\)  donde \(n\) es la longitud del hash. En este caso \(n=24\), por lo que se requiere calcular unos pocos millones de hashes.
+- El cálculo no debería tomar más de unas decenas de segundos en una computadora con un procesador reciente.
+** Solución
+
+
+
+#+begin_src python :results output :session cripto
+from hashlib import sha256
+
+target = b'alvarmaciel@gmail.com'
+print(sha256(target).hexdigest()[:6])
+expected = sha256(target).hexdigest()[:6]
+message = b''
+for i in range(0, (2**32)-1):
+     test = target+i.to_bytes(4, 'big')
+     if sha256(test).hexdigest()[:6] == expected:
+         message = test    
+         break
+print(message)
+print(sha256(message).hexdigest()[:6])
+with open('message.bin', 'wb') as f:
+    f.write(message)
+
+#+end_src
+
+#+RESULTS:
+: 7ae248
+: b'alvarmaciel@gmail.com\x00\x18\xf5b'
+: 7ae248
+
+#+begin_src python :results output :session cripto
+import requests
+url = 'https://ciberseguridad.diplomatura.unc.edu.ar/cripto/second-preimage/alvarmaciel@gmail.com/answer'
+data = {'message': message}
+print(message)
+response = requests.post(url, files=data)
+print(response.status_code)
+print(response.text)
+#+end_src
+
+#+RESULTS:
+: b'alvarmaciel@gmail.com\x00\x18\xf5b'
+: 200
+: ¡Ganaste!
+
+
+** Reflexión
+1. Concepto criptográfico (2-3 oraciones)
+Realicé un ataque de segunda preimagen: generé un mensaje diferente a alvarmaciel@gmail.com que produce el mismo hash SHA-256-24. Fue rápido porque solo necesité probar ~2^24 = 16 millones de valores en promedio. Si usáramos 48 bits, serían 2^48 = (2^24)^2 valores, tardando meses en vez de 0.5 segundos. SHA-256 completo (256 bits) hace computacionalmente inviable este ataque con recursos actuales.
+
+Ahora si usaramos el doble, 48 byts es 2^24 x 2^24 16M x 16M.
+Si 24 bits tardaron 0.5 segundos en procesarlos, 48 tardaría varis meses. Dado que el hash256 tiene 256 bits hace muy difícil la creación de segundas preimagenes. Lo que no quiere decir que con una computadora cuantica nos e pueda hacer
+
+- Segunda pre imagen :: Mensaje M1 y debo encontrar M2 distinto de M! tal que hash(M1) =  hash(M2)
+
+2. Implementación técnica (2-3 oraciones)
+Iteré un contador de 0 a 2^32, convirtiendo cada número a 4 bytes con .to_bytes(4, 'big') y concatenándolo al email. Esto fue más simple que usar 4 loops anidados. El algoritmo paró cuando hash(mensaje_candidato)[:6] == '7ae248'.
+
+3. Lección práctica (1-2 oraciones)
+
+Esto nos demuestra que nunca tenemos que usar hashes truncados como SHA-256-24 en producción la Longitud mínima recomendada para seguridad real es SHA-256 -> 64 char hexa -> 32 bytes -> 256 bits
+
