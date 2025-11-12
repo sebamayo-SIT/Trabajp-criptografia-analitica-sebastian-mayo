@@ -117,7 +117,7 @@ print(response.text)
 
 
 ** Reflexión
-1. Concepto criptográfico (2-3 oraciones)
+*** Concepto criptográfico
 Realicé un ataque de segunda preimagen: generé un mensaje diferente a alvarmaciel@gmail.com que produce el mismo hash SHA-256-24. Fue rápido porque solo necesité probar ~2^24 = 16 millones de valores en promedio. Si usáramos 48 bits, serían 2^48 = (2^24)^2 valores, tardando meses en vez de 0.5 segundos. SHA-256 completo (256 bits) hace computacionalmente inviable este ataque con recursos actuales.
 
 Ahora si usaramos el doble, 48 byts es 2^24 x 2^24 16M x 16M.
@@ -125,10 +125,10 @@ Si 24 bits tardaron 0.5 segundos en procesarlos, 48 tardaría varis meses. Dado 
 
 - Segunda pre imagen :: Mensaje M1 y debo encontrar M2 distinto de M! tal que hash(M1) =  hash(M2)
 
-2. Implementación técnica (2-3 oraciones)
+*** Implementación técnica
 Iteré un contador de 0 a 2^32, convirtiendo cada número a 4 bytes con .to_bytes(4, 'big') y concatenándolo al email. Esto fue más simple que usar 4 loops anidados. El algoritmo paró cuando hash(mensaje_candidato)[:6] == '7ae248'.
 
-3. Lección práctica (1-2 oraciones)
+*** Lección práctica
 
 Esto nos demuestra que nunca tenemos que usar hashes truncados como SHA-256-24 en producción la Longitud mínima recomendada para seguridad real es SHA-256 -> 64 char hexa -> 32 bytes -> 256 bits
 
