@@ -1,0 +1,378 @@
+#+title:      Cripto Ejercicios Blockchain
+#+date:       [2025-11-15 sáb 12:57]
+#+filetags:   :cripto:diplomatura:famaf:
+#+identifier: 20251115T125735
+
+* Prueba de trabajo en una red blockchain
+** enunciado
+*** desafío
+El desafío consiste en construir un bloque de una blockchain ficticia que sea aceptado por el servidor y agregado a la cadena. Para ello es necesario conocer el último bloque de la cadena, el cual puede obtenerse en la URL:
+
+https://ciberseguridad.diplomatura.unc.edu.ar/cripto/pow/<email>/blocks/latest
+
+Donde <email> debe reemplazare por el correo electrónico registrado. La respuesta será un bloque codificado en /Base64/
+*** Ejemplos
+
+#+begin_src bash :results output
+curl https://ciberseguridad.diplomatura.unc.edu.ar/cripto/pow/test.user@example.com/blocks/latest
+#+end_src
+
+#+RESULTS:
+: AAAAAAAAABYAAAAAaQtmwAAAAQAAAAAAAAAAAADqA3UAAADWHotySyGikBw5ZD9iWIhoau4R/eHwUb/d/O8qkL2ocjQvcmJtuco3jqojXEheRut5PDCVwFURO9tj6ocu
+
+Usando Python:
+
+#+begin_src python :results output :session enunciado
+
+server = "https://ciberseguridad.diplomatura.unc.edu.ar/cripto"
+
+import requests
+email = "test.user@example.com"
+response = requests.get(f"{server}/pow/{email}/blocks/latest")
+print(response.text)
+
+#+end_src
+
+#+RESULTS:
+: AAAAAAAAABYAAAAAaQtmwAAAAQAAAAAAAAAAAADqA3UAAADWHotySyGikBw5ZD9iWIhoau4R/eHwUb/d/O8qkL2ocjQvcmJtuco3jqojXEheRut5PDCVwFURO9tj6ocu
+
+También es posible obtener un bloque específico de la cadena indicando un número válido en lugar de =latest=.
+Por ejemplo, para obtener el primer bloque de la cadena (el 0):
+
+#+begin_src python :results output :session enunciado
+zero_block = requests.get(f"{server}/pow/{email}/blocks/0")
+print(zero_block.status_code)
+print(zero_block.text)
+#+end_src
+
+#+RESULTS:
+: 200
+: AAAAAAAAAAAAAAAAaMyqLgAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAENuWumTmU0NIJhwNi7VO1vIhP45miYqj5hx4uY9aBtL
+
+Un valor inválido provocará un error:
+#+begin_src python :results output :session enunciado
+wrong_block = requests.get(f"{server}/pow/{email}/blocks/1000")
+print(wrong_block.status_code)
+print(wrong_block.text)
+#+end_src
+
+#+RESULTS:
+: 400
+: Número de bloque inválido: 1000
+*** Estructura de bloque
+Un bloque es una estructura de 96 bytes (768 bits) src_elisp{(* 96 8)} {{{results(=768=)}}} compuesta por los siguientes campos:
+
+| Campo                                      | Longitud |
+|--------------------------------------------+----------|
+| Numero de Bloque                           | 64 bits  |
+| Timestamp                                  | 64 bits  |
+| Primeros 64 bits del target                | 64 bits  |
+| Nonce                                      | 64 bits  |
+| Hash del bloque anterior                   | 256 bits |
+| Hash de la dirección de correo electrónico | 256 bits |
+
+- El numero de bloque es un entero sin signo de 64 bits, almancenado en 8 bytes utilizando la covención /big endian/.
+- el /timestamp/ representa la cantidad de segunds transcurrida desde las 00:0 del 1 de enero de 1970, UTC. Es un entero sin signo, de 64 bits, almacenado en 8 bytes utilizando la conveción /big endian/.
+- El /target/, u objetivo, es un número de 256 bits almacenado según la convención /big endian/. En el bloque stán almacenados los primeros 64 bits (es decir, los más significativos) y los 192 bits restantes son ceros.
+- El nonce es un valor de 64 bits elegido por el minero para que el hash del bloque sea inferior al valor objetivo.
+- El hash del bloque anterior se calcula utilizando SHA-256 sobre los 96 bytes del bloque anterior.
+- EL hash de la dirección del correo electrónico se calcula utilizando SHA-256 sobre la dirección de correo electrónico del minero codificada en UTF-8.
+
+*** Ejemplo
+Analizaremos en Pyton el bloque 0 de la cadena. Priero obteneos el bloque, codificado en Base64, y lo decodificams para obtener una secuencua de bytes.
+
+#+begin_src python :results output :session enunciado
+import base64
+block = base64.b64decode(zero_block.content)
+print(f"bloque 0 en bytes: {block}")
+print(f"largo de la cadena: {len(block)}")
+#+end_src
+
+#+RESULTS:
+: bloque 0 en bytes: b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00h\xcc\xaa.\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00CnZ\xe9\x93\x99M\r \x98p6.\xd5;[\xc8\x84\xfe9\x9a&*\x8f\x98q\xe2\xe6=h\x1bK'
+: largo de la cadena: 96
+
+Los primeros 64 bits (8 bytes) corresponden al número de bloque, almacenados según la convnción big endian:
+
+#+begin_src python :results output :session enunciado
+block_number = int.from_bytes(block[:8], "big")
+print(f"número de bloque: {block_number}")
+#+end_src
+
+#+RESULTS:
+: número de bloque: 0
+El número de bloque es 0, tal como esperabamos.
+Los siguientes 8 bytes corresponden al =timestamp=.
+
+#+begin_src python :results output :session enunciado
+from datetime import datetime
+timestamp = int.from_bytes(block[8:16], "big")
+print(f"timestamp: {timestamp}")
+date_and_time = datetime.fromtimestamp(timestamp)
+print(date_and_time)
+#+end_src
+
+#+RESULTS:
+: timestamp: 1758243374
+: 2025-09-18 21:56:14
+
+Los siguientes 8 bytes corresponden a lso 64 bits más significativos del objetivo (=target=)
+
+#+begin_src python :results output :session enunciado
+msb_64_target = int.from_bytes(block[16:24], "big")
+print(msb_64_target)
+#+end_src
+
+#+RESULTS:
+: 1099511627776
+Podemos obtener el objetivo desplazando el valor obtenido 192 bits a la izquierda:
+#+begin_src python :results output :session enunciado
+target = msb_64_target << 192
+print(f"target: {target:064x}")
+#+end_src
+
+#+RESULTS:
+: target: 0000010000000000000000000000000000000000000000000000000000000000
+También podriamos haber armando la secuencua de bytes equivalentes concatenando los 8 bytes mencionados con 32 bytes en cero:
+
+#+begin_src python :results output :session enunciado
+target_bytes = block[16:24] + b'\0'*24
+print(target_bytes.hex())
+#+end_src
+
+#+RESULTS:
+: 0000010000000000000000000000000000000000000000000000000000000000
+Debe quedar claro que aquí las diferencias entre las distintas representaciones dan un mismo valor.
+=target= como lo hemos declarado es un número entero
+#+begin_src python :results output :session enunciado
+print(target)
+
+#+end_src
+
+#+RESULTS:
+: 6901746346790563787434755862277025452451108972170386555162524223799296
+=targe_bytes= una secuencia de 32 bytes(254 bits)
+#+begin_src python :results output :session enunciado
+print(target_bytes)
+#+end_src 
+
+#+RESULTS:
+: b'\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+=target= es el número que resulta de interpretar =target_bytes= como número /big eindian/.
+#+begin_src python :results output :session enunciado
+print(target == int.from_bytes(target_bytes, "big"))
+print(target_bytes == target.to_bytes(32, "big"))
+#+end_src
+
+#+RESULTS:
+: True
+: True
+Ambos pueden ser representados medianet la misma /string/ hexadecimal
+#+begin_src python :results output :session enunciado
+print(f"{target:064x}")
+print(target_bytes.hex())
+#+end_src
+
+#+RESULTS:
+: 0000010000000000000000000000000000000000000000000000000000000000
+: 0000010000000000000000000000000000000000000000000000000000000000
+De la misma forma podemos obtener el =nonce=:
+#+begin_src python :results output :session enunciado
+nonce = int.from_bytes(block[24:32], "big")
+print(nonce)
+#+end_src
+
+#+RESULTS:
+: 0
+Los siguientes 32 bytes corresponden al /hash/ del bloque anterior:
+#+begin_src python :results output :session enunciado
+previous_block_hash = block[32:64]
+print(previous_block_hash.hex())
+#+end_src
+
+#+RESULTS:
+: 0000000000000000000000000000000000000000000000000000000000000000
+El bloque 0 no tiene bloque anterior, y tanto el =nonce= como el =hash= del bloque anterior tienen un valor arbitrario, en este caso, cero.
+
+El último componente del bloque contiene el resultadod e clacular SHA-256 sobre la direccion de correo electrónico del minero, es decir, de quien encuentra un bloque que satisface el objetivo establecido:
+
+#+begin_src python :results output :session enunciado
+email_hash = block[64:96]
+print(email_hash.hex())
+#+end_src
+
+#+RESULTS:
+: 436e5ae993994d0d209870362ed53b5bc884fe399a262a8f9871e2e63d681b4b
+Podemos verificar que este =hash= coincide con el de miguel.monte@unc.edu.ar, es la dirección del crador del bloque 0:
+#+begin_src python :results output :session enunciado
+genesis_email = "mmontes@iua.edu.ar"
+from hashlib import sha256
+print(sha256(genesis_email.encode("utf-8")).hexdigest())
+
+#+end_src
+
+#+RESULTS:
+: 436e5ae993994d0d209870362ed53b5bc884fe399a262a8f9871e2e63d681b4b
+*** Envío de respuesta
+El bloque se desea agregar debe ser enviado mediante un requerimiento POST a la URL =https://ciberseguridad.diplomatura.unc.edu.ar/cripto/pow/<email>/blocks=
+
+El contenido debe ser de tipo FORM, con un campo =blocl= con el bloque codificado en Base64.
+**** Ejemplo
+Como en los ejemplos anteriores, nos basaremos en Python. Las funciones y estructures a utilizar dependeán, por supuesto, del lenguaje utilizado.
+Queremos producir una secuencia de bytes que contenga los siguientes datos:
+- En número del nuevo bloque, que sebe ser el número del último bloque incrementado en uno.
+- Un =timestamp= valido, que corrsponda a la hora en la que generamos el bloque, ya que el servidor rechazará un valor que difiera en más de 30 segundos del la hora actual.
+- El mismo valor objetivo que el bloque anterior
+- un =nonce= 
+- El =hash= del bloque anterior.
+- El =hash+ del correo electrónico dle minero.
+
+usaremos como ejemplo el bloqe 0 que obtuvimos anteriormente para armar un posible bloque 1, y luego coararlo con el vloque 1 real.
+El número del nuebo bloque se puede obtener facilmente sumando 1 al número del bloque anterior
+#+begin_src python :results output :session enunciado
+new_block_number = int.from_bytes(block[0:8], "big") + 1
+#+end_src
+
+#+RESULTS:
+El =timestamp= se obtiene a partir de la hora actual
+
+#+begin_src python :results output :session enunciado
+new_timestamp = int(datetime.now().timestamp())
+#+end_src
+
+#+RESULTS:
+
+El objetivo es el mismo que en el bloque anterior
+#+begin_src python :results output :session enunciado
+new_target = block[16:24]
+#+end_src
+
+#+RESULTS:
+
+EL =hash= del bloque anteriro se obtiene aplicand SHA-256 a todo el bloque:
+#+begin_src python :results output :session enunciado
+previous_block_hash = sha256(block).digest()
+#+end_src
+
+#+RESULTS:
+el =hash= del correo electrónico se obtiene convirtiendo a este en =bytes y siand SHA-256:
+#+begin_src python :results output :session enunciado
+email = "test.user@example.com" # Este valor debe ser reemplazado por su dirección de correo
+email_hash = sha256(email.encode("utf-8")).digest()
+#+end_src
+
+#+RESULTS:
+Si bien podemos concatenar todos estos valores para obtener el bloque, vamos a tener que probar con muchos =nonces= distintos y en Python el tipo =byte= es inmutable. para construi una structura mutable, que pueda ser alterada en cada interaccion, utilizaremos el tipo =bytearrary= que tiene propiedades similares a =bytes= pero que es mutable:
+
+#+begin_src python :results output :session enunciado
+new_block = bytearray(96)
+new_block[0:8] = new_block_number.to_bytes(8, "big")
+new_block[8:16] = new_timestamp.to_bytes(8, "big")
+new_block[16:24] = new_target
+new_block[32:64] = previous_block_hash
+new_block[64:96] = email_hash
+print(new_block.hex())
+
+#+end_src
+
+#+RESULTS:
+: 000000000000000100000000691b9c97000001000000000000000000000000007d3bfe170e3dd8b1d25e1d1a98bc5b9a71fb92333e936c08c2fe3dc7d7ea1117a97d7a4513204a9cc7cb2f11d72d41a59b18d1ba633d22e58d53c625518f5203
+
+Hemos armado un bloque que tiene la estructura deseada, con un nonce formado por 8 bytes en cero. Si calculamos su hash es poco probable que su valor sea inferior al valor objetivo:
+#+begin_src python :results output :session enunciado
+new_hash = sha256(new_block).hexdigest()
+print(new_hash)
+#+end_src
+
+#+RESULTS:
+: 239e32ef4224d9e09e6281b92e8e16d884262e868b298bbbc8e0892de37d2f63
+A simple vista podemos ver que no comienza con la cantidad adecuada de ceros. Por supuesto, lo que deberíamos hacer sería utilizar digest() en lugar de hexdigest(), y de alguna forma obtener un número que para compararlo con el objetivo.
+
+Obtengamos el bloque 1 verdadero
+#+begin_src python :results output :session enunciado
+response = requests.get(f"{server}/pow/{email}/blocks/1")
+block_1 = base64.b64decode(response.content)
+print(sha256(block_1).hexdigest())
+#+end_src
+
+#+RESULTS:
+: 00000005baacd236412c16695a478533e58b9feda9af0c4a742bfc1bb3515a90
+Podemos ver cómo el hash del bloque 1 tiene la cantidad adecuada de ceros.
+
+Para encontrar un bloque de estas características, debemos probar distintos valores de nonce hasta que encontremos uno que produzca el hash deseado.
+
+Una vez obtenido un bloque adecuado, podemos enviarlo mediante un POST a la URL adecuada
+#+begin_src python :results output :noeval
+encoded_block = base64.b64encode(new_block)
+response = requests.post(
+    f"{server}/pow/{email}/blocks",
+    files = {"block": encoded_block })
+#+end_src
+
+        
+** Solución
+:PROPERTIES:
+:header-args: :session solucion
+:END:
+- Primero tengo que bajar el último bloque y armar el futuro bloque con la data del primero
+- Tengo que probar los nonce, esto no se como hacerlo, pero podría bajar todos los bloque del 0 al ultimo y traer los nonces para evaluarlos?
+- enviarlo
+#+begin_src python :results output
+import base64
+import requests
+from hashlib import sha256
+from datetime import datetime, timezone
+
+server = "https://ciberseguridad.diplomatura.unc.edu.ar/cripto"
+email = "alvarmaciel@gmail.com"
+response = requests.get(f"{server}/pow/{email}/blocks/latest")
+block = base64.b64decode(response.content)
+target = int.from_bytes(block[16:24] + b'\0'*24, "big")
+print(f"último bloque: {sha256(block).hexdigest()}")
+
+new_block_number = int.from_bytes(block[0:8], "big") + 1
+new_timestamp = int(datetime.now(timezone.utc).timestamp())
+new_target = block[16:24]
+previous_block_hash = sha256(block).digest()
+email_hash = sha256(email.encode("utf-8")).digest()
+
+new_block = bytearray(96)
+new_block[0:8] = new_block_number.to_bytes(8, "big")
+new_block[8:16] = new_timestamp.to_bytes(8, "big")
+new_block[16:24] = new_target
+new_block[32:64] = previous_block_hash
+new_block[64:96] = email_hash
+
+for i in range(2**24):
+    new_nonce = i
+
+    new_block[24:32] = new_nonce.to_bytes(8, "big")
+    
+    # Calcular hash del bloque completo
+    block_hash = sha256(new_block).digest()
+    
+    if int.from_bytes(block_hash, "big") < target:
+        # ¡Encontrado!
+        break
+# Armar Cadena y mandar
+final_hash = sha256(new_block).hexdigest()
+print(f"Hash del bloque minado: {final_hash}")
+print(f"Target:                 {target:064x}")
+print(f"¿Hash < Target?: {int.from_bytes(sha256(new_block).digest(), 'big') < target}")
+encoded_block = base64.b64encode(new_block)
+print(encoded_block)
+response = requests.post(
+    f"{server}/pow/{email}/blocks",
+    files = {"block": encoded_block })
+print(response.status_code)
+print(response.content)
+#+end_src
+
+#+RESULTS:
+: último bloque: 0000003f15e1dfb7b8a4b52798e5bf8689a54c7e5d8bee51dc7a1751b7293cca
+: Hash del bloque minado: 000000c9ec531b0086202f0275287a846b4ca3f7b4b6f4df3b54f9b350067309
+: Target:                 0000010000000000000000000000000000000000000000000000000000000000
+: ¿Hash < Target?: True
+: b'AAAAAAAAABcAAAAAaRuoYgAAAQAAAAAAAAAAAADmgxUAAAA/FeHft7iktSeY5b+GiaVMfl2L7lHcehdRtyk8ynriSDwFTbdy4TlmM6kETaLA7PbPfH2XoQeVve7SLLgW'
+: 200
+: b'\xc2\xa1Ganaste!\n'
