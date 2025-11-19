@@ -1,9 +1,9 @@
-#+title:      cripto-ejercicio-second-preimage
+#+title:      second-preimage
 #+date:       [2025-11-12 mié 16:00]
 #+filetags:   :cripto:diplomatura:famaf:
 #+identifier: 20251112T160028
 
-* Ejercicio
+* Ejercicio second pre image
 
 ** Enunciado
 El desafío consiste en encontrar una segunda preimagen al resultado de aplicar una función de hash de 24 bits a su dirección de correo electrónico.
@@ -132,3 +132,80 @@ Iteré un contador de 0 a 2^32, convirtiendo cada número a 4 bytes con .to_byte
 
 Esto nos demuestra que nunca tenemos que usar hashes truncados como SHA-256-24 en producción la Longitud mínima recomendada para seguridad real es SHA-256 -> 64 char hexa -> 32 bytes -> 256 bits
 
+
+* Ejercicio colisión
+** Enunciado
+En este caso el servidor no provee ningún desafío, sino que es necesario generar dos mensajes distintos que colisionen utilizando SHA-256-48. El contenido y longitud de ambos mensajes es arbitrario, pero ambos deben incluir la dirección de correo electrónico registrada.
+** Respuesta
+La respuesta debe ser enviada mediante un requerimiento POST a la URL
+
+https://ciberseguridad.diplomatura.unc.edu.ar/cripto/collision/<email>/answer
+
+El contenido debe ser de tipo FORM, con dos campos message1 y message2 que deberán contener los mensajes que colisionan.
+#+begin_src bash :noeval
+curl -F message1='user@example.comJ<]x' -F message2='user@example.com!!%&/!' https://ciberseguridad.diplomatura.unc.edu.ar/cripto/collision/user@example.com/answer
+¡Ganaste!
+echo -n 'user@example.comJ<]x'| sha256sum | cut -c-12
+c16170259226
+echo -n 'user@example.com;$sN'| sha256sum | cut -c-12
+c16170259226
+
+#+end_src
+Para encontrar una colisión, el esfuerzo necesario es del orden de , donde es la longitud del hash. En este caso
+= 48, por lo que se requiere calcular unos pocos millones de hashes.
+El cálculo no debería tomar más de unas decenas de segundos en una computadora con un procesador reciente.
+** Solución
+#+begin_src python :results output :session collision
+from hashlib import sha256
+email = b"alvarmaciel@gmail.com"
+checked = {}
+messages = []
+for i in range(2**25):
+    message = email + i.to_bytes(4, 'big')
+    hash_48 = sha256(message).hexdigest()[:12]
+    if hash_48 in checked:
+        messages = [checked.get(hash_48), message]
+        break
+    else:
+        checked[hash_48]= message
+print(f"Iteraciones completadas: {i}")
+print(f"Hashes únicos guardados: {len(checked)}")
+print(f"¿Se encontró colisión?: {len(messages) > 0}")
+m1, m2 = messages
+h1 = sha256(m1).hexdigest()[:12]
+h2 = sha256(m2).hexdigest()[:12]
+print(f"M1: {m1}")
+print(f"M2: {m2}")
+print(f"Hash M1: {h1}")
+print(f"Hash M2: {h2}")
+print(f"¿Son iguales?: {h1 == h2}")
+print(f"¿Mensajes diferentes?: {m1 != m2}")
+#+end_src
+
+#+RESULTS:
+: Iteraciones completadas: 8992364
+: Hashes únicos guardados: 8992364
+: ¿Se encontró colisión?: True
+: M1: b'alvarmaciel@gmail.com\x00^\xc7\xfb'
+: M2: b'alvarmaciel@gmail.com\x00\x896l'
+: Hash M1: ec8221e55a2c
+: Hash M2: ec8221e55a2c
+: ¿Son iguales?: True
+: ¿Mensajes diferentes?: True
+
+#+begin_src python :results output :session collision
+import requests
+url = 'https://ciberseguridad.diplomatura.unc.edu.ar/cripto/collision/alvarmaciel@gmail.com/answer'
+data = {'message1': m1, 'message2':m2}
+print(data)
+response = requests.post(url, files=data)
+print(response.status_code)
+print(response.text)
+#+end_src
+
+#+RESULTS:
+: {'message1': b'alvarmaciel@gmail.com\x00^\xc7\xfb', 'message2': b'alvarmaciel@gmail.com\x00\x896l'}
+: 200
+: ¡Ganaste!
+
+** Reflexión
