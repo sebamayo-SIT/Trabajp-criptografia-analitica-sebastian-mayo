@@ -79,7 +79,7 @@ b4c9a2
 #+begin_src python :results output :session cripto
 from hashlib import sha256
 
-target = b'alvarmaciel@gmail.com'
+target = b'sebamayo08@gmail.com'
 print(sha256(target).hexdigest()[:6])
 expected = sha256(target).hexdigest()[:6]
 message = b''
@@ -97,12 +97,12 @@ with open('message.bin', 'wb') as f:
 
 #+RESULTS:
 : 7ae248
-: b'alvarmaciel@gmail.com\x00\x18\xf5b'
+: b'sebamayo08@gmail.com\x00\x18\xf5b'
 : 7ae248
 
 #+begin_src python :results output :session cripto
 import requests
-url = 'https://ciberseguridad.diplomatura.unc.edu.ar/cripto/second-preimage/alvarmaciel@gmail.com/answer'
+url = 'https://ciberseguridad.diplomatura.unc.edu.ar/cripto/second-preimage/sebamayo08@gmail.com/answer'
 data = {'message': message}
 print(message)
 response = requests.post(url, files=data)
@@ -111,14 +111,14 @@ print(response.text)
 #+end_src
 
 #+RESULTS:
-: b'alvarmaciel@gmail.com\x00\x18\xf5b'
+: b'sebamayo08@gmail.com\x00\x18\xf5b'
 : 200
 : ¡Ganaste!
 
 
 ** Reflexión
 *** Concepto criptográfico
-Realicé un ataque de segunda preimagen: generé un mensaje diferente a alvarmaciel@gmail.com que produce el mismo hash SHA-256-24. Fue rápido porque solo necesité probar ~2^24 = 16 millones de valores en promedio. Si usáramos 48 bits, serían 2^48 = (2^24)^2 valores, tardando meses en vez de 0.5 segundos. SHA-256 completo (256 bits) hace computacionalmente inviable este ataque con recursos actuales.
+Realicé un ataque de segunda preimagen: generé un mensaje diferente a sebamayo08@gmail.com que produce el mismo hash SHA-256-24. Fue rápido porque solo necesité probar ~2^24 = 16 millones de valores en promedio. Si usáramos 48 bits, serían 2^48 = (2^24)^2 valores, tardando meses en vez de 0.5 segundos. SHA-256 completo (256 bits) hace computacionalmente inviable este ataque con recursos actuales.
 
 Ahora si usaramos el doble, 48 byts es 2^24 x 2^24 16M x 16M.
 Si 24 bits tardaron 0.5 segundos en procesarlos, 48 tardaría varis meses. Dado que el hash256 tiene 256 bits hace muy difícil la creación de segundas preimagenes. Lo que no quiere decir que con una computadora cuantica nos e pueda hacer
@@ -157,7 +157,7 @@ El cálculo no debería tomar más de unas decenas de segundos en una computador
 ** Solución
 #+begin_src python :results output :session collision
 from hashlib import sha256
-email = b"alvarmaciel@gmail.com"
+email = b"sebamayo08@gmail.com"
 checked = {}
 messages = []
 for i in range(2**25):
@@ -186,8 +186,8 @@ print(f"¿Mensajes diferentes?: {m1 != m2}")
 : Iteraciones completadas: 8992364
 : Hashes únicos guardados: 8992364
 : ¿Se encontró colisión?: True
-: M1: b'alvarmaciel@gmail.com\x00^\xc7\xfb'
-: M2: b'alvarmaciel@gmail.com\x00\x896l'
+: M1: b'sebamayo08@gmail.com\x00^\xc7\xfb'
+: M2: b'sebamayo08@gmail.com\x00\x896l'
 : Hash M1: ec8221e55a2c
 : Hash M2: ec8221e55a2c
 : ¿Son iguales?: True
@@ -195,7 +195,7 @@ print(f"¿Mensajes diferentes?: {m1 != m2}")
 
 #+begin_src python :results output :session collision
 import requests
-url = 'https://ciberseguridad.diplomatura.unc.edu.ar/cripto/collision/alvarmaciel@gmail.com/answer'
+url = 'https://ciberseguridad.diplomatura.unc.edu.ar/cripto/collision/sebamayo08@gmail.com/answer'
 data = {'message1': m1, 'message2':m2}
 print(data)
 response = requests.post(url, files=data)
@@ -204,7 +204,7 @@ print(response.text)
 #+end_src
 
 #+RESULTS:
-: {'message1': b'alvarmaciel@gmail.com\x00^\xc7\xfb', 'message2': b'alvarmaciel@gmail.com\x00\x896l'}
+: {'message1': b'sebamayo08@gmail.com\x00^\xc7\xfb', 'message2': b'sebamayo08@gmail.com\x00\x896l'}
 : 200
 : ¡Ganaste!
 

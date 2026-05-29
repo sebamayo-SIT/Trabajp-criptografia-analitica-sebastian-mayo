@@ -324,7 +324,7 @@ from hashlib import sha256
 from datetime import datetime, timezone
 
 server = "https://ciberseguridad.diplomatura.unc.edu.ar/cripto"
-email = "alvarmaciel@gmail.com"
+email = "sebamayo08@gmail.com"
 response = requests.get(f"{server}/pow/{email}/blocks/latest")
 block = base64.b64decode(response.content)
 target = int.from_bytes(block[16:24] + b'\0'*24, "big")
